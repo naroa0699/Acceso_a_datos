@@ -1,0 +1,121 @@
+import java.sql.*;
+import java.io.*;
+
+public class NavegadorTabla {
+
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Uso: java NavegadorTabla <nombreTabla>");
+            return;
+        }
+
+        String nombreTabla = args[0];
+
+        Connection con = null;
+        Statement st = null;
+        ResultSet rs = null;
+
+        try {
+            // Ejemplo de conexión: ajusta según tu BD
+            con = DriverManager.getConnection("jdbc:mysql://localhost/miBD", "usuario", "clave");
+
+            st = con.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+                                     ResultSet.CONCUR_READ_ONLY);
+
+            rs = st.executeQuery("SELECT * FROM " + nombreTabla);
+
+            if (!rs.next()) {
+                System.out.println("La tabla está vacía.");
+                return;
+            }
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            int filaActual = 1;
+
+            mostrarFila(rs, filaActual);
+
+            while (true) {
+                System.out.print("Comando: ");
+                String comando = br.readLine();
+
+                if (comando.equals(".")) {
+                    System.out.println("Fin del programa.");
+                    break;
+                }
+
+                // comando "k": siguiente fila
+                if (comando.equals("k")) {
+                    if (rs.next()) {
+                        filaActual++;
+                        mostrarFila(rs, filaActual);
+                    } else {
+                        System.out.println("No hay una fila siguiente.");
+                    }
+                    continue;
+                }
+
+                // comando "d": fila anterior
+                if (comando.equals("d")) {
+                    if (rs.previous()) {
+                        filaActual--;
+                        mostrarFila(rs, filaActual);
+                    } else {
+                        System.out.println("No hay una fila anterior.");
+                    }
+                    continue;
+                }
+
+                // Si es un número: ir a esa fila
+                if (esEntero(comando)) {
+                    int num = Integer.parseInt(comando);
+                    if (num <= 0) {
+                        System.out.println("El número de fila debe ser mayor que 0.");
+                        continue;
+                    }
+
+                    if (rs.absolute(num)) {
+                        filaActual = num;
+                        mostrarFila(rs, filaActual);
+                    } else {
+                        System.out.println("La fila " + num + " no existe.");
+                    }
+                    continue;
+                }
+
+                // Comando inválido
+                System.out.println("Comando no reconocido.");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try { if (rs != null) rs.close(); } catch (Exception ex) {}
+            try { if (st != null) st.close(); } catch (Exception ex) {}
+            try { if (con != null) con.close(); } catch (Exception ex) {}
+        }
+    }
+
+    // Muestra el contenido de la fila actual
+    private static void mostrarFila(ResultSet rs, int numFila) throws SQLException {
+        ResultSetMetaData meta = rs.getMetaData();
+        int columnas = meta.getColumnCount();
+
+        System.out.println("fila " + numFila);
+        for (int i = 1; i <= columnas; i++) {
+            String nombre = meta.getColumnName(i);
+            String valor = rs.getString(i);
+            System.out.println(nombre + ": " + valor);
+        }
+        System.out.println();
+    }
+
+    // Verifica si un String es un entero
+    private static boolean esEntero(String s) {
+        try {
+            Integer.parseInt(s);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}
